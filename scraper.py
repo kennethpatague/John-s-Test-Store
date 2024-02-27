@@ -11,7 +11,7 @@ headers = {
 
 def product_listings():
     page_number = 1
-    max_page = 1
+    max_page = 12
     product_lists = []
     while page_number <= max_page:
         start_url = f'https://gopher1.extrkt.com/?paged={page_number}'
@@ -94,7 +94,7 @@ def product_scraping(product_variants):
                     color = _color.get_text()
 
             sku_element= soup.select_one('span.sku').get_text(strip=True).strip('SKU:')
-            sku = f'{sku_element}-{color}-{size}'
+            sku = f'{sku_element}-{size}-{color}'
             category = soup.select_one('span.posted_in a').get_text()
 
             form = soup.select_one('form.variations_form.cart')
