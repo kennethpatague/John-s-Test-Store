@@ -11,7 +11,7 @@ headers = {
 
 def product_listings():
     page_number = 1
-    max_page = 12
+    max_page = 2
     product_lists = []
     while page_number <= max_page:
         start_url = f'https://gopher1.extrkt.com/?paged={page_number}'
@@ -151,7 +151,7 @@ def result(parsed_products, filename):
 def main():
     listings = product_listings()
     scrape_products = product_scraping(listings)
-    result(scrape_products, 'teststore.csv')
+    result(scrape_products, 'products.csv')
 
 
 main()
