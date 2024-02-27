@@ -11,7 +11,7 @@ headers = {
 
 def product_listings():
     page_number = 1
-    max_page = 2
+    max_page = 1
     product_lists = []
     while page_number <= max_page:
         start_url = f'https://gopher1.extrkt.com/?paged={page_number}'
@@ -46,7 +46,7 @@ def product_listings():
                     first_pair.append(item_list[0])
                     second_pair.append(item_list[1])
                 elif len(get_attr) == 0:
-                    print(f"Getting product variation links {product_list}")
+                    print(f"Getting product links {product_list}")
                     product_variants.append(product_list)
                 else:
                     item_list = list(get_attr.items())
@@ -56,14 +56,14 @@ def product_listings():
                 for first, second in zip(first_pair, second_pair):
                     variant_link = f"{product_list}&{first[0]}={first[1]}&{second[0]}={second[1]}"
                     product_variants.append(variant_link)
-                    print(f"Getting product variation links {variant_link}")
+                    print(f"Getting product links {variant_link}")
             else:
                 for first in first_pair:
                     variant_link = f"{product_list}&{first[0]}={first[1]}"
                     product_variants.append(variant_link)
-                    print(f"Getting product variation links {variant_link}")
+                    print(f"Getting product links {variant_link}")
         else:
-            print(f"Getting product variation links {product_list}")
+            print(f"Getting product links {product_list}")
             product_variants.append(product_list)
 
     return product_variants
@@ -72,63 +72,67 @@ def product_listings():
 def product_scraping(product_variants):
     parsed_products = []
     for variant in product_variants:
-        response = requests.get(variant).content.decode()
+        response = requests.get(variant, headers=headers).content.decode()
 
-        if requests.get(variant).status_code == 200:
+        if requests.get(variant, headers=headers).status_code == 200:
             print(f"Scraping {variant}")
             soup = BeautifulSoup(response, features='lxml')
             product_element = soup.select_one('div.summary.entry-summary')
             size_element = soup.select('select#size option')
             color_element = soup.select('select#color option')
+            form = soup.select_one('form.variations_form.cart')
 
             title = product_element.find('h1').get_text(strip=True)
             product_url = variant
             price = product_element.select_one('p.price span').get_text()
-
-            for _size in size_element:
-                if _size.get('selected') == 'selected':
-                    size = _size.get_text()
-            
-            for _color in color_element:
-                if _color.get('selected') == 'selected':
-                    color = _color.get_text()
-
             sku_element= soup.select_one('span.sku').get_text(strip=True).strip('SKU:')
-            sku = f'{sku_element}-{size}-{color}'
             category = soup.select_one('span.posted_in a').get_text()
+            size = ""
+            color = ""
 
-            form = soup.select_one('form.variations_form.cart')
             if form:
-                if "size" or 'color' in variant:
-                    data_product_variations = form.get('data-product_variations')
-                    json_attributes = json.loads(data_product_variations)
 
-                    availability = ''
-                    stock = ''
-                    image = ''
-                    for attributes in json_attributes:
-                        get_sku = attributes.get('sku')
-                        if sku == get_sku:
-                            get_availability = attributes.get('availability_html')
-                            availability_soup = BeautifulSoup(get_availability, features='lxml')
-                            availability = availability_soup.get_text(strip=True)
-                            stock = availability
-                            image = attributes['image']['url']    
+                for _size in size_element:
+                    if _size.get('selected') == 'selected':
+                        size = _size.get_text()
                 
-                product_info = {
-                    "Title": title,
-                    "Product URL": product_url,
-                    "Image URL": image,
-                    "SKU": sku,
-                    "Price": price,
-                    "Stock": stock,
-                    "Category": category,
-                    "Size": size,
-                    "Color": color,
-                    }
-                parsed_products.append(product_info)
-        else:
-            print(f"Error parsing link: Status code {response.status_code}")
+                for _color in color_element:
+                    if _color.get('selected') == 'selected':
+                        color = _color.get_text()
+
+                sku = f'{sku_element}-{size}-{color}'
+                data_product_variations = form.get('data-product_variations')
+                json_attributes = json.loads(data_product_variations)
+
+                availability = ''
+                stock = ''
+                image = ''
+                for attributes in json_attributes:
+                    get_sku = attributes.get('sku')
+                    if sku == get_sku:
+                        get_availability = attributes.get('availability_html')
+                        availability_soup = BeautifulSoup(get_availability, features='lxml')
+                        availability = availability_soup.get_text(strip=True)
+                        stock = availability
+                        image = attributes['image']['url']    
+            else:
+                sku = sku_element= soup.select_one('span.sku').get_text(strip=True).strip('SKU:')
+                stock = soup.select_one('p.stock.in-stock').get_text()
+                image = soup.select_one('div.woocommerce-product-gallery__image a').get('href')
+                
+
+            product_info = {
+                "Title": title,
+                "Product URL": product_url,
+                "Image URL": image,
+                "SKU": sku if sku else "",
+                "Price": price,
+                "Stock": stock,
+                "Category": category,
+                "Size": size if size else "",
+                "Color": color if color else "",
+                }
+            parsed_products.append(product_info)
     return parsed_products
 
 
